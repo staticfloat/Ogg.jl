@@ -100,13 +100,17 @@ function encode_all_packets(enc::OggEncoder, packets::Dict{Clong,Vector{Vector{U
     return pages
 end
 
-function save(file_path::Union{File{format"OGG"},AbstractString}, packets::Dict{Clong,Vector{Vector{UInt8}}}, granulepos::Dict{Clong,Vector{Int64}})
+function save(fio::IO, packets::Dict{Clong,Vector{Vector{UInt8}}}, granulepos::Dict{Clong,Vector{Int64}})
     enc = OggEncoder()
     pages = encode_all_packets(enc, packets, granulepos)
+    for page in pages
+        write(fio, page)
+    end
+end
+
+function save(file_path::Union{File{format"OGG"},AbstractString}, packets::Dict{Clong,Vector{Vector{UInt8}}}, granulepos::Dict{Clong,Vector{Int64}})
     open(file_path, "w") do fio
-        for page in pages
-            write(fio, page)
-        end
+        save(fio, packets, granulepos)
     end
 end
 

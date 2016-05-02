@@ -161,9 +161,13 @@ function decode_all_packets(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4
     return dec.packets
 end
 
-function load(file_path::Union{File{format"OGG"},AbstractString})
+function load(fio::IO)
     dec = OggDecoder()
+    return decode_all_packets(dec, fio)
+end
+
+function load(file_path::Union{File{format"OGG"},AbstractString})
     open(file_path) do fio
-        return decode_all_packets(dec, fio)
+        return load(fio)
     end
 end
