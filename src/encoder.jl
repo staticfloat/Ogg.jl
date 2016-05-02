@@ -42,10 +42,8 @@ function ogg_stream_packetin(enc::OggEncoder, serial::Clong, data::Vector{UInt8}
     end
 
     # Build ogg_packet structure
-    packet = OggPacket(
-                pointer(data), length(data), enc.packet_counts[serial] == 0,
-                last_packet, granulepos, enc.packet_counts[serial]
-            )
+    packet = OggPacket( pointer(data), length(data), enc.packet_counts[serial] == 0,
+                        last_packet, granulepos, enc.packet_counts[serial] )
 
     streamref = Ref{OggStreamState}(enc.streams[serial])
     packetref = Ref{OggPacket}(packet)
@@ -55,6 +53,7 @@ function ogg_stream_packetin(enc::OggEncoder, serial::Clong, data::Vector{UInt8}
     if status == -1
         error("ogg_stream_packetin() failed: Unknown failure")
     end
+    enc.packet_counts[serial] += 1
     return nothing
 end
 
@@ -116,5 +115,5 @@ end
 
 # Convenience save() function for single-stream Ogg files, assigns an arbitrary stream ID
 function save(file_path::Union{File{format"OGG"},AbstractString,IO}, packets::Vector{Vector{UInt8}}, granulepos::Vector{Int64})
-    return save(file_path, Dict(31415926 => packets), Dict(31415926 => granulepos))
+    return save(file_path, Dict(314159265 => packets), Dict(314159265 => granulepos))
 end
