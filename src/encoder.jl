@@ -115,6 +115,6 @@ function save(file_path::Union{File{format"OGG"},AbstractString}, packets::Dict{
 end
 
 # Convenience save() function for single-stream Ogg files, assigns an arbitrary stream ID
-function save(file_path::Union{File{format"OGG"},AbstractString}, packets::Vector{Vector{UInt8}}, granulepos::Vector{Int64})
+function save(file_path::Union{File{format"OGG"},AbstractString,IO}, packets::Vector{Vector{UInt8}}, granulepos::Vector{Int64})
     return save(file_path, Dict(31415926 => packets), Dict(31415926 => granulepos))
 end
