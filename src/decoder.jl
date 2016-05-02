@@ -6,7 +6,7 @@ type OggDecoder
     function OggDecoder()
         syncref = Ref{OggSyncState}(OggSyncState())
         status = ccall((:ogg_sync_init,libogg), Cint, (Ref{OggSyncState},), syncref)
-        dec = new(syncref[], Dict{Cint,OggStreamState}(), Dict{Cint,Vector{Vector{UInt8}}}())
+        dec = new(syncref[], Dict{Clong,OggStreamState}(), Dict{Clong,Vector{Vector{UInt8}}}())
         if status != 0
             error("ogg_sync_init() failed: This should never happen")
         end
@@ -99,7 +99,7 @@ function ogg_stream_pagein(dec::OggDecoder, page::OggPage)
     return serial
 end
 
-function ogg_stream_packetout(dec::OggDecoder, serial::Clong)
+function ogg_stream_packetout(dec::OggDecoder, serial::Clong; retry::Bool = false)
     if !haskey(dec.streams, serial)
         return nothing
     end
@@ -107,27 +107,28 @@ function ogg_stream_packetout(dec::OggDecoder, serial::Clong)
     packetref = Ref{OggPacket}(OggPacket())
     status = ccall((:ogg_stream_packetout,libogg), Cint, (Ref{OggStreamState}, Ref{OggPacket}), streamref, packetref)
     dec.streams[serial] = streamref[]
-    #println("ogg_stream_packetout(&os, $serial): $status")
     if status == 1
+        #println("Packet[$(packetref[].packetno)]: $(packetref[].granulepos)")
         return packetref[]
     else
+        # Is our status -1?  That means we're desynchronized and should try again, at least once
+        if status == -1 && !retry
+            return ogg_stream_packetout(dec, serial; retry = true)
+        end
         return nothing
     end
 end
 
-
-function decode_next_page(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4096)
-    #println("decode_next_page(dec, enc_io; chunk_size=$chunk_size)")
-    page = nothing
-
+"""
+File goes in, packets come out
+"""
+function decode_all_packets(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4096)
     # Load data in until we have a page to sync out
-    while page == nothing
+    while !eof(enc_io)
         page = ogg_sync_pageout(dec)
-
-        if page != nothing
-            break
-        elseif eof(enc_io)
-            return nothing
+        while page != nothing
+            ogg_stream_pagein(dec, page)
+            page = ogg_sync_pageout(dec)
         end
 
         # Load in up to `chunk_size` of data, unless the stream closes before that
@@ -136,52 +137,33 @@ function decode_next_page(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 409
         ogg_sync_wrote(dec, bytes_read)
     end
 
-    # We've got a page, write it out into the proper stream
-    ogg_stream_pagein(dec, page)
-    return page
-end
-
-function decode_all_packets(dec::OggDecoder, serial::Clong)
-    #println("decode_all_packets(dec, $serial)")
-    packet = nothing
-
-    packet = ogg_stream_packetout(dec, serial)
-    while packet != nothing
-        # Store packet into our data
-        push!(dec.packets[serial], copy(pointer_to_array(packet.packet, packet.bytes)))
-
-        # Have we hit the end of this stream?  If so, remove it and release its resources
-        if packet.e_o_s == 1
-            delete!(dec.streams, serial)
-        end
-
-        packet = ogg_stream_packetout(dec, serial)
-    end
-end
-
-function decode_all(dec::OggDecoder, fio::IO)
-    while true
-        # Load in a page
-        page = decode_next_page(dec, fio)
-
-        # Try to decode packets for the serial that this page just gave us
-        if page != nothing
-            serial = ogg_page_serialno(page)
-            decode_all_packets(dec, serial)
-        else
-            break
-        end
+    # Do our last pageouts to get the last pages
+    page = ogg_sync_pageout(dec)
+    while page != nothing
+        ogg_stream_pagein(dec, page)
+        page = ogg_sync_pageout(dec)
     end
 
-    # Then, at the end, drain each serial
+    # Now, decode all packets for these pages
     for serial in keys(dec.streams)
-        decode_all_packets(dec, serial)
+        packet = ogg_stream_packetout(dec, serial)
+        while packet != nothing
+            push!(dec.packets[serial], copy(pointer_to_array(packet.packet, packet.bytes)))
+
+            if packet.e_o_s == 1
+                delete!(dec.streams, serial)
+            end
+
+            packet = ogg_stream_packetout(dec, serial)
+        end
     end
-    return dec
+
+    return dec.packets
 end
 
-function decode_all(dec::OggDecoder, file_path::AbstractString)
+function load(file_path::Union{File{format"OGG"},AbstractString})
+    dec = OggDecoder()
     open(file_path) do fio
-        return decode_all(dec, fio)
+        return decode_all_packets(dec, fio)
     end
 end

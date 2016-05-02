@@ -1,5 +1,6 @@
 module Ogg
 using Compat
+using FileIO
 import Base: show
 
 const depfile = joinpath(dirname(@__FILE__), "..", "deps", "deps.jl")

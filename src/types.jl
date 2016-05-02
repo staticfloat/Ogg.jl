@@ -1,5 +1,6 @@
-# These types all shadow libogg datatypes, hence they are all immutable
+import Base: convert
 
+# These types all shadow libogg datatypes, hence they are all immutable
 immutable OggSyncState
     # Pointer to buffered stream data
     data::Ptr{UInt8}
@@ -39,6 +40,12 @@ immutable OggPage
 
     # zero-constructor
     OggPage() = new(C_NULL, 0, C_NULL, 0)
+end
+
+function convert(::Type{Vector{UInt8}}, page::OggPage)
+    header_ptr = pointer_to_array(page.header, page.header_len)
+    body_ptr = pointer_to_array(page.body, page.body_len)
+    return vcat(header_ptr, body_ptr)
 end
 
 function show(io::IO, x::OggPage)
@@ -115,10 +122,9 @@ immutable OggPacket
     granulepos::Int64
     # Sequential number of this packet in the ogg bitstream
     packetno::Int64
-
-    # zero-constructor
-    OggPacket() = new(C_NULL, 0, 0, 0, 0, 0)
 end
+# zero-constructor
+OggPacket() = OggPacket(C_NULL, 0, 0, 0, 0, 0)
 
 function show(io::IO, x::OggPacket)
     write(io,"OggPacket ID: $(x.packetno), length $(x.bytes) bytes")
