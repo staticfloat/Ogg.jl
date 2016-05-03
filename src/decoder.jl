@@ -45,7 +45,6 @@ end
 function ogg_sync_wrote(dec::OggDecoder, size)
     syncref = Ref{OggSyncState}(dec.sync_state)
     status = ccall((:ogg_sync_wrote,libogg), Cint, (Ref{OggSyncState}, Clong), syncref, size)
-    #println("ogg_sync_wrote(&os, $size): $status")
     dec.sync_state = syncref[]
     if status != 0
         error("ogg_sync_wrote() failed: error code $status")
@@ -57,7 +56,6 @@ function ogg_sync_pageout(dec::OggDecoder)
     pageref = Ref{OggPage}(OggPage())
     status = ccall((:ogg_sync_pageout,libogg), Cint, (Ref{OggSyncState}, Ref{OggPage}), syncref, pageref)
     dec.sync_state = syncref[]
-    #println("ogg_sync_pageout(&os, &op): $status")
     if status == 1
         return pageref[]
     else
@@ -70,6 +68,11 @@ function ogg_page_serialno(page::OggPage)
     return Clong(ccall((:ogg_page_serialno,libogg), Cint, (Ref{OggPage},), pageref))
 end
 
+function ogg_page_eos(page::OggPage)
+    pageref = Ref{OggPage}(page)
+    return ccall((:ogg_page_eos,libogg), Cint, (Ref{OggPage},), pageref)
+end
+
 
 """
 Send a page in, return the serial number of the stream that we just decoded
@@ -77,7 +80,6 @@ Send a page in, return the serial number of the stream that we just decoded
 function ogg_stream_pagein(dec::OggDecoder, page::OggPage)
     serial = ogg_page_serialno(page)
     if !haskey(dec.streams, serial)
-        #println("Creating new stream for serial $serial")
         streamref = Ref{OggStreamState}(OggStreamState())
         status = ccall((:ogg_stream_init,libogg), Cint, (Ref{OggStreamState}, Cint), streamref, serial)
         if status != 0
@@ -108,7 +110,6 @@ function ogg_stream_packetout(dec::OggDecoder, serial::Clong; retry::Bool = fals
     status = ccall((:ogg_stream_packetout,libogg), Cint, (Ref{OggStreamState}, Ref{OggPacket}), streamref, packetref)
     dec.streams[serial] = streamref[]
     if status == 1
-        #println("Packet[$(packetref[].packetno)]: $(packetref[].granulepos)")
         return packetref[]
     else
         # Is our status -1?  That means we're desynchronized and should try again, at least once

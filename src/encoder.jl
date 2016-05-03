@@ -1,10 +1,9 @@
 type OggEncoder
     streams::Dict{Clong,OggStreamState}
-    packet_counts::Dict{Clong,Int64}
     pages::Dict{Clong,Vector{Vector{UInt8}}}
 
     function OggEncoder()
-        enc = new(Dict{Clong,OggStreamState}(), Dict{Clong,Int64}(), Dict{Clong,Vector{Vector{UInt8}}}())
+        enc = new(Dict{Clong,OggStreamState}(), Dict{Clong,Vector{Vector{UInt8}}}())
 
         # This seems to be causing problems.  :(
         # finalizer(enc, x -> begin
@@ -26,9 +25,8 @@ function show(io::IO, x::OggEncoder)
     end
 end
 
-function ogg_stream_packetin(enc::OggEncoder, serial::Clong, data::Vector{UInt8}, last_packet::Bool, granulepos::Int64)
+function ogg_stream_packetin(enc::OggEncoder, serial::Clong, data::Vector{UInt8}, packet_idx, last_packet::Bool, granulepos::Int64)
     if !haskey(enc.streams, serial)
-        #println("Creating new stream for serial $serial")
         streamref = Ref{OggStreamState}(OggStreamState())
         status = ccall((:ogg_stream_init,libogg), Cint, (Ref{OggStreamState}, Cint), streamref, serial)
         if status != 0
@@ -36,24 +34,21 @@ function ogg_stream_packetin(enc::OggEncoder, serial::Clong, data::Vector{UInt8}
         end
         enc.streams[serial] = streamref[]
 
-        # Also initialize enc.packets for this serial
-        enc.packet_counts[serial] = 0
+        # Also initialize enc.pages for this serial
         enc.pages[serial] = Vector{Vector{UInt8}}()
     end
 
     # Build ogg_packet structure
-    packet = OggPacket( pointer(data), length(data), enc.packet_counts[serial] == 0,
-                        last_packet, granulepos, enc.packet_counts[serial] )
+    packet = OggPacket( pointer(data), length(data), packet_idx == 0,
+                        last_packet, granulepos, packet_idx )
 
     streamref = Ref{OggStreamState}(enc.streams[serial])
     packetref = Ref{OggPacket}(packet)
     status = ccall((:ogg_stream_packetin,libogg), Cint, (Ref{OggStreamState}, Ref{OggPacket}), streamref, packetref)
     enc.streams[serial] = streamref[]
-    #println("Sent $(length(data)) samples to the pagers")
     if status == -1
         error("ogg_stream_packetin() failed: Unknown failure")
     end
-    enc.packet_counts[serial] += 1
     return nothing
 end
 
@@ -64,6 +59,21 @@ function ogg_stream_pageout(enc::OggEncoder, serial::Clong)
     streamref = Ref{OggStreamState}(enc.streams[serial])
     pageref = Ref{OggPage}(OggPage())
     status = ccall((:ogg_stream_pageout,libogg), Cint, (Ref{OggStreamState}, Ref{OggPage}), streamref, pageref)
+    enc.streams[serial] = streamref[]
+    if status == 0
+        return nothing
+    else
+        return pageref[]
+    end
+end
+
+function ogg_stream_flush(enc::OggEncoder, serial::Clong)
+    if !haskey(enc.streams, serial)
+        return nothing
+    end
+    streamref = Ref{OggStreamState}(enc.streams[serial])
+    pageref = Ref{OggPage}(OggPage())
+    status = ccall((:ogg_stream_flush,libogg), Cint, (Ref{OggStreamState}, Ref{OggPage}), streamref, pageref)
     enc.streams[serial] = streamref[]
     if status == 0
         return nothing
@@ -84,11 +94,28 @@ function encode_all_packets(enc::OggEncoder, packets::Dict{Clong,Vector{Vector{U
         # Shove all packets into their own stream
         for packet_idx in 1:length(packets[serial])
             eos = packet_idx == length(packets[serial])
-            ogg_stream_packetin(enc, serial, packets[serial][packet_idx], eos, granulepos[serial][packet_idx])
+            ogg_stream_packetin(enc, serial, packets[serial][packet_idx], packet_idx - 1, eos, granulepos[serial][packet_idx])
+
+            # A granulepos of zero signifies a header packet, which should be
+            # flushed into its own page
+            if granulepos[serial][packet_idx] == 0
+                page = ogg_stream_flush(enc, serial)
+                while page != nothing
+                    push!(pages, page)
+                    page = ogg_stream_pageout(enc, serial)
+                end
+            end
         end
 
         # Take pages out and add them to our list of pages
         page = ogg_stream_pageout(enc, serial)
+        while page != nothing
+            push!(pages, page)
+            page = ogg_stream_pageout(enc, serial)
+        end
+
+        # Flush the last pages out as well
+        page = ogg_stream_flush(enc, serial)
         while page != nothing
             push!(pages, page)
             page = ogg_stream_pageout(enc, serial)
