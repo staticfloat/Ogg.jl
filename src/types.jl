@@ -1,5 +1,3 @@
-import Base: convert
-
 # These types all shadow libogg datatypes, hence they are all immutable
 immutable OggSyncState
     # Pointer to buffered stream data

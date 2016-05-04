@@ -1,12 +1,13 @@
 type OggDecoder
     sync_state::OggSyncState
     streams::Dict{Clong,OggStreamState}
+    pages::Dict{Clong,Vector{OggPage}}
     packets::Dict{Clong,Vector{Vector{UInt8}}}
 
     function OggDecoder()
         syncref = Ref{OggSyncState}(OggSyncState())
         status = ccall((:ogg_sync_init,libogg), Cint, (Ref{OggSyncState},), syncref)
-        dec = new(syncref[], Dict{Clong,OggStreamState}(), Dict{Clong,Vector{Vector{UInt8}}}())
+        dec = new(syncref[], Dict{Clong,OggStreamState}(), Dict{Clong,Vector{OggPage}}(), Dict{Clong,Vector{Vector{UInt8}}}())
         if status != 0
             error("ogg_sync_init() failed: This should never happen")
         end
@@ -87,9 +88,13 @@ function ogg_stream_pagein(dec::OggDecoder, page::OggPage)
         end
         dec.streams[serial] = streamref[]
 
-        # Also initialize dec.packets for this serial
+        # Also initialize dec.packets and dec.pages for this serial
+        dec.pages[serial] = Vector{Vector{UInt8}}()
         dec.packets[serial] = Vector{Vector{UInt8}}()
     end
+
+    # Save the page in dec.pages for posterity
+    push!(dec.pages[serial], page)
 
     streamref = Ref{OggStreamState}(dec.streams[serial])
     pageref = Ref{OggPage}(page)
@@ -120,10 +125,7 @@ function ogg_stream_packetout(dec::OggDecoder, serial::Clong; retry::Bool = fals
     end
 end
 
-"""
-File goes in, packets come out
-"""
-function decode_all_packets(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4096)
+function decode_all_pages(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4096)
     # Load data in until we have a page to sync out
     while !eof(enc_io)
         page = ogg_sync_pageout(dec)
@@ -144,6 +146,14 @@ function decode_all_packets(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4
         ogg_stream_pagein(dec, page)
         page = ogg_sync_pageout(dec)
     end
+end
+
+"""
+File goes in, packets come out
+"""
+function decode_all_packets(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4096)
+    # Decode all pages (ignoring return since we don't need the actual pages themselves)
+    decode_all_pages(dec, enc_io; chunk_size=chunk_size)
 
     # Now, decode all packets for these pages
     for serial in keys(dec.streams)

@@ -1,7 +1,8 @@
 module Ogg
 using Compat
 using FileIO
-import Base: show
+import Base: show, convert
+export load, save, OggDecoder, OggEncoder
 
 const depfile = joinpath(dirname(@__FILE__), "..", "deps", "deps.jl")
 if isfile(depfile)
