@@ -25,24 +25,27 @@ save(ogg_file, packets, granulepos)
 
 # Rewind to the beginning of this IOBuffer and load the packets back in
 seekstart(ogg_file)
+
+# This is the verbose way to load an Ogg file that leaves the decoder object
+# around for us to inspect; the load() function returns only `dec.packets`
 dec = OggDecoder()
-ogg_packets = Ogg.decode_all_packets(dec, ogg_file)
+Ogg.decode_all_pages(dec, ogg_file)
+Ogg.decode_all_packets(dec, ogg_file)
 
 # # Are the serial numbers the same?
-@test sort(collect(keys(ogg_packets))) == sort(stream_ids)
+@test sort(collect(keys(dec.packets))) == sort(stream_ids)
 
 # Are the number of packets the same?
 for serial in stream_ids
-    @test length(ogg_packets[serial]) == length(packets[serial])
+    @test length(dec.packets[serial]) == length(packets[serial])
 end
 
 # Are the contents of the packets the same?
 for serial in stream_ids
-    for packet_idx in 1:length(ogg_packets[serial])
-        @test ogg_packets[serial][packet_idx] == packets[serial][packet_idx]
+    for packet_idx in 1:length(dec.packets[serial])
+        @test dec.packets[serial][packet_idx] == packets[serial][packet_idx]
     end
 end
-
 
 # Let's dig deeper; let's ensure that the first two pages had length equal to
 # our first two packets, proving that our header packets had their own pages:
@@ -50,3 +53,19 @@ for serial in stream_ids
     @test dec.pages[serial][1].body_len == length(packets[serial][1])
     @test dec.pages[serial][2].body_len == length(packets[serial][2])
 end
+
+
+
+# Next, let's load a known ogg stream and ensure that it's exactly as we expect
+ogg_packets = load("zero.ogg")
+
+# There is only one stream, and we know its serial number
+@test collect(keys(ogg_packets)) == [1238561138]
+serial = first(keys(ogg_packets))
+
+# There are four packets, the first starts with \x7fFLAC
+@test length(ogg_packets[serial]) == 4
+@test bytestring(ogg_packets[serial][1][2:5]) == "FLAC"
+
+# The lengths of the packets are:
+@test [length(x) for x in ogg_packets[serial]] == [51, 55, 13, 0]

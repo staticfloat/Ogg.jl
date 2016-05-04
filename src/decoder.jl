@@ -151,10 +151,7 @@ end
 """
 File goes in, packets come out
 """
-function decode_all_packets(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4096)
-    # Decode all pages (ignoring return since we don't need the actual pages themselves)
-    decode_all_pages(dec, enc_io; chunk_size=chunk_size)
-
+function decode_all_packets(dec::OggDecoder, enc_io::IO)
     # Now, decode all packets for these pages
     for serial in keys(dec.streams)
         packet = ogg_stream_packetout(dec, serial)
@@ -168,16 +165,16 @@ function decode_all_packets(dec::OggDecoder, enc_io::IO; chunk_size::Integer = 4
             packet = ogg_stream_packetout(dec, serial)
         end
     end
+end
 
+function load(fio::IO; chunk_size=4096)
+    dec = OggDecoder()
+    decode_all_pages(dec, fio; chunk_size=chunk_size)
+    decode_all_packets(dec, fio)
     return dec.packets
 end
 
-function load(fio::IO)
-    dec = OggDecoder()
-    return decode_all_packets(dec, fio)
-end
-
-function load(file_path::Union{File{format"OGG"},AbstractString})
+function load(file_path::Union{File{format"OGG"},AbstractString}; chunk_size=4096)
     open(file_path) do fio
         return load(fio)
     end

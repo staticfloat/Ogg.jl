@@ -1,3 +1,4 @@
+__precompile__()
 module Ogg
 using Compat
 using FileIO
