@@ -1,6 +1,7 @@
-
 using Ogg
 using Base.Test
+
+testdir = dirname(@__FILE__)
 
 # Let's start with building our own Ogg structure, writing it out to an IOBuf,
 # then loading it back in again and checking everything about it we can think of
@@ -57,7 +58,7 @@ end
 
 
 # Next, let's load a known ogg stream and ensure that it's exactly as we expect
-ogg_packets = load("zero.ogg")
+ogg_packets = load(joinpath(testdir, "zero.ogg"))
 
 # There is only one stream, and we know its serial number
 @test collect(keys(ogg_packets)) == [1238561138]
