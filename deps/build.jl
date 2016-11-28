@@ -5,7 +5,7 @@ using Compat
 
 libogg = library_dependency("libogg", aliases = ["libogg"])
 
-@osx_only begin
+@static if is_apple()
   using Homebrew
   provides( Homebrew.HB, "libogg", libogg, os = :Darwin )
 end
