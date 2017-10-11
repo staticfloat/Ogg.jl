@@ -40,7 +40,7 @@ function ogg_sync_buffer(dec::OggDecoder, size)
     if buffer == C_NULL
         error("ogg_sync_buffer() failed: returned buffer NULL")
     end
-    return pointer_to_array(buffer, size)
+    return unsafe_wrap(Array, buffer, size)
 end
 
 function ogg_sync_wrote(dec::OggDecoder, size)
@@ -156,7 +156,7 @@ function decode_all_packets(dec::OggDecoder, enc_io::IO)
     for serial in keys(dec.streams)
         packet = ogg_stream_packetout(dec, serial)
         while packet != nothing
-            push!(dec.packets[serial], copy(pointer_to_array(packet.packet, packet.bytes)))
+            push!(dec.packets[serial], copy(unsafe_wrap(Array, packet.packet, packet.bytes)))
 
             if packet.e_o_s == 1
                 delete!(dec.streams, serial)

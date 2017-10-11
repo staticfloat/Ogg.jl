@@ -1,6 +1,5 @@
 __precompile__()
 module Ogg
-using Compat
 using FileIO
 import Base: show, convert
 export load, save, OggDecoder, OggEncoder

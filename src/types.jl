@@ -41,8 +41,8 @@ immutable OggPage
 end
 
 function convert(::Type{Vector{UInt8}}, page::OggPage)
-    header_ptr = pointer_to_array(page.header, page.header_len)
-    body_ptr = pointer_to_array(page.body, page.body_len)
+    header_ptr = unsafe_wrap(Array, page.header, page.header_len)
+    body_ptr = unsafe_wrap(Array, page.body, page.body_len)
     return vcat(header_ptr, body_ptr)
 end
 
