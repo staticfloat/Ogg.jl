@@ -1,5 +1,4 @@
 using BinDeps
-using Compat
 
 @BinDeps.setup
 
@@ -12,4 +11,4 @@ end
 
 provides( AptGet, "libogg0", libogg )
 
-@compat @BinDeps.install Dict(:libogg => :libogg)
+@BinDeps.install Dict(:libogg => :libogg)

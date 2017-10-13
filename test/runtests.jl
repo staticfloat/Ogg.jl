@@ -66,7 +66,7 @@ serial = first(keys(ogg_packets))
 
 # There are four packets, the first starts with \x7fFLAC
 @test length(ogg_packets[serial]) == 4
-@test bytestring(ogg_packets[serial][1][2:5]) == "FLAC"
+@test String(copy(ogg_packets[serial][1][2:5])) == "FLAC"
 
 # The lengths of the packets are:
 @test [length(x) for x in ogg_packets[serial]] == [51, 55, 13, 0]
