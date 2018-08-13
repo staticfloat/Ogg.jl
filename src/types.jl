@@ -51,7 +51,7 @@ function show(io::IO, x::OggPage)
 end
 
 # This const here so that we don't use ... syntax in new()
-const oss_zero_header = (UInt8[0 for i in 1:282]...)
+const oss_zero_header = tuple(zeros(UInt8, 282)...)
 struct OggStreamState
     # Pointer to data from packet bodies
     body_data::Ptr{UInt8}
