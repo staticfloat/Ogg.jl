@@ -1,5 +1,5 @@
 using Ogg
-using Base.Test
+using Compat.Test
 
 @testset "Ogg synthesis/analysis" begin
     # Let's start with building our own Ogg structure, writing it out to an IOBuf,
