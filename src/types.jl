@@ -1,5 +1,5 @@
 # These types all shadow libogg datatypes, hence they are all immutable
-immutable OggSyncState
+struct OggSyncState
     # Pointer to buffered stream data
     data::Ptr{UInt8}
     # Current allocated size of the stream buffer held in *data
@@ -26,7 +26,7 @@ function ogg_sync_destroy(sync::OggSyncState)
 end
 
 
-immutable OggPage
+struct OggPage
     # Pointer to the page header for this page
     header::Ptr{UInt8}
     # Length of the page header in bytes
@@ -51,8 +51,8 @@ function show(io::IO, x::OggPage)
 end
 
 # This const here so that we don't use ... syntax in new()
-const oss_zero_header = (UInt8[0 for i in 1:282]...)
-immutable OggStreamState
+const oss_zero_header = tuple(zeros(UInt8, 282)...)
+struct OggStreamState
     # Pointer to data from packet bodies
     body_data::Ptr{UInt8}
     # Storage allocated for bodies in bytes (filled or unfilled)
@@ -102,7 +102,7 @@ function ogg_stream_destroy(stream::OggStreamState)
     ccall((:ogg_stream_destroy,libogg), Cint, (Ptr{OggStreamState},),stream)
 end
 
-immutable OggPacket
+struct OggPacket
     # Pointer to the packet's data. This is treated as an opaque type by the ogg layer
     packet::Ptr{UInt8}
     # Indicates the size of the packet data in bytes. Packets can be of arbitrary size

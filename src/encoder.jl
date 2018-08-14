@@ -1,4 +1,4 @@
-type OggEncoder
+mutable struct OggEncoder
     streams::Dict{Clong,OggStreamState}
     pages::Dict{Clong,Vector{Vector{UInt8}}}
 

@@ -1,4 +1,4 @@
-type OggDecoder
+mutable struct OggDecoder
     sync_state::OggSyncState
     streams::Dict{Clong,OggStreamState}
     pages::Dict{Clong,Vector{OggPage}}
