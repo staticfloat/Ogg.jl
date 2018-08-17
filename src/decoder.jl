@@ -156,8 +156,19 @@ function decode_all_packets(dec::OggDecoder, enc_io::IO)
     for serial in keys(dec.streams)
         packet = ogg_stream_packetout(dec, serial)
         while packet != nothing
-            push!(dec.packets[serial], copy(unsafe_wrap(Array, packet.packet, packet.bytes)))
+            # This packet will soon go away, and we're unsafe_wrap'ing its data
+            # into an arry, so we make an explicit copy of that wrapped array,
+            # then push that into `dec.packets[]`
+            packet_data = copy(unsafe_wrap(Array, packet.packet, packet.bytes))
+            push!(dec.packets[serial], packet_data)
 
+            # If this was the last packet in this stream, delete the stream from
+            # the list of streams.  `ogg_stream_packetout()` should return `nothing`
+            # after this.  Note that if a stream just doesn't have more information
+            # available, it's possible for `ogg_stream_packetout()` to return `nothing`
+            # even without `packet.e_o_s == 1` being true.  In that case, we can come
+            # back through `decode_all_packets()` a second time to get more packets
+            # from the streams that have not ended.
             if packet.e_o_s == 1
                 delete!(dec.streams, serial)
             end
