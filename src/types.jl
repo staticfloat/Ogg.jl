@@ -40,14 +40,16 @@ struct OggPage
     OggPage() = new(C_NULL, 0, C_NULL, 0)
 end
 
-function convert(::Type{Vector{UInt8}}, page::OggPage)
-    header_ptr = unsafe_wrap(Array, page.header, page.header_len)
-    body_ptr = unsafe_wrap(Array, page.body, page.body_len)
-    return vcat(header_ptr, body_ptr)
+function read(page::OggPage)
+    GC.@preserve page begin
+        header_ptr = unsafe_wrap(Array, page.header, page.header_len)
+        body_ptr = unsafe_wrap(Array, page.body, page.body_len)
+        return vcat(header_ptr, body_ptr)
+    end
 end
 
 function show(io::IO, x::OggPage)
-    write(io, "OggPage ID: $(Cuint(ogg_page_serialno(x))), length $(x.body_len) bytes")
+    write(io, "OggPage ID: $(ogg_page_serialno(x)), length $(x.body_len) bytes")
 end
 
 # This const here so that we don't use ... syntax in new()
