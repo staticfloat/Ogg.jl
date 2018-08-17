@@ -7,12 +7,12 @@ using Compat.Test
 
     # We are going to build three streams, each with 10 packets
     num_packets = 10
-    stream_ids = rand(Cint, 3)
+    stream_ids = Cint[1, 2, 3]
     packets = Dict{Clong,Vector{Vector{UInt8}}}()
     granulepos = Dict{Int64,Vector{Int64}}()
     for serial in stream_ids
         # The packets are all of different size
-        packets[serial] = Vector{UInt8}[rand(UInt8, 100*x) for x in 1:num_packets]
+        packets[serial] = Vector{UInt8}[UInt8.(mod.(collect(1:100*x), 256)) for x in 1:num_packets]
 
         # Each packet will have a monotonically increasing granulepos, except for
         # the first two packets which are our "header" packets with granulepos == 0

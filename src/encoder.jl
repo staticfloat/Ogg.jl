@@ -84,7 +84,9 @@ end
 
 
 """
-Packets go in, pages come out
+    encode_all_packets(enc, packets, granulepos)
+
+Feed all packets (with their corresponding granule positions) into encoder `enc`.
 """
 function encode_all_packets(enc::OggEncoder, packets::Dict{Clong,Vector{Vector{UInt8}}}, granulepos::Dict{Clong,Vector{Int64}})
     pages = Vector{Vector{UInt8}}()
@@ -97,27 +99,25 @@ function encode_all_packets(enc::OggEncoder, packets::Dict{Clong,Vector{Vector{U
             ogg_stream_packetin(enc, serial, packets[serial][packet_idx], packet_idx - 1, eos, granulepos[serial][packet_idx])
 
             # A granulepos of zero signifies a header packet, which should be
-            # flushed into its own page
+            # flushed into its own page.  We know the header packets always
+            # fit within a single page too, so we don't bother with the typical
+            # while loop that would dump out excess data into its own page.
             if granulepos[serial][packet_idx] == 0
-                page = ogg_stream_flush(enc, serial)
-                while page != nothing
-                    push!(pages, page)
-                    page = ogg_stream_pageout(enc, serial)
-                end
+                push!(pages, read(ogg_stream_flush(enc, serial)))
             end
         end
 
-        # Take pages out and add them to our list of pages
-        page = ogg_stream_pageout(enc, serial)
-        while page != nothing
-            push!(pages, page)
-            page = ogg_stream_pageout(enc, serial)
-        end
-
-        # Flush the last pages out as well
+        # Flush and then pull all pages out.  Note that in a streaming situation,
+        # normally you would call ogg_stream_pageout(enc, serial) periodically, as
+        # you feed data into the stream with ogg_stream_packetin(), however in this
+        # case all the data has already been written, so we can simply blithely call
+        # ogg_stream_flush() and then read pages out until we run out of pages.
+        # Note further that we could call ogg_stream_flush() from within the while
+        # loop, however it is unnecessary as a single flush is enough to get the
+        # pages moving, and this is better for code coverage purposes.
         page = ogg_stream_flush(enc, serial)
         while page != nothing
-            push!(pages, page)
+            push!(pages, read(page))
             page = ogg_stream_pageout(enc, serial)
         end
     end
