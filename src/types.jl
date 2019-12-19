@@ -54,7 +54,7 @@ end
 
 # This const here so that we don't use ... syntax in new()
 const oss_zero_header = tuple(zeros(UInt8, 282)...)
-struct OggStreamState
+mutable struct OggStreamState
     # Pointer to data from packet bodies
     body_data::Ptr{UInt8}
     # Storage allocated for bodies in bytes (filled or unfilled)
@@ -68,7 +68,7 @@ struct OggStreamState
     # Each value is a byte, indicating packet segment length
     lacing_vals::Ptr{Cint}
     # Pointer to the lacing values for the packet segments within the current page
-    granule_vals::Int64
+    granule_vals::Ptr{Int64}
     # Total amount of storage (in bytes) allocated for storing lacing values
     lacing_storage::Clong
     # Fill marker for the current vs. total allocated storage of lacing values for the page
@@ -90,14 +90,14 @@ struct OggStreamState
     # Serial number of this logical bitstream
     serialno::Clong
     # Number of the current page within the stream
-    pageno::Cint
+    pageno::Clong
     # Number of the current packet
     packetno::Int64
     # Exact position of decoding/encoding process
     granulepos::Int64
 
     # zero-constructor
-    OggStreamState() = new(0,0,0,0,C_NULL,0,0,0,0,0,oss_zero_header,0,0,0,0,0,0,0)
+    OggStreamState() = new(0,0,0,0,C_NULL,C_NULL,0,0,0,0,oss_zero_header,0,0,0,0,0,0,0)
 end
 
 function ogg_stream_destroy(stream::OggStreamState)
