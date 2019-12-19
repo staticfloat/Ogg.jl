@@ -1,0 +1,11 @@
+name = "Ogg"
+uuid = "796d8c31-69d0-5366-9081-a3bf997f4f0d"
+version = "1.0.0"
+
+[deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+Ogg_jll = "e7412a2a-1a6e-54c0-be00-318e2571c051"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+julia = "1.3"

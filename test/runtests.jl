@@ -1,5 +1,4 @@
-using Ogg
-using Compat.Test
+using Ogg, Test
 
 @testset "Ogg synthesis/analysis" begin
     # Let's start with building our own Ogg structure, writing it out to an IOBuf,
@@ -9,14 +8,14 @@ using Compat.Test
     num_packets = 10
     stream_ids = Cint[1, 2, 3]
     packets = Dict{Clong,Vector{Vector{UInt8}}}()
-    granulepos = Dict{Int64,Vector{Int64}}()
+    granulepos = Dict{Clong,Vector{Int64}}()
     for serial in stream_ids
         # The packets are all of different size
         packets[serial] = Vector{UInt8}[UInt8.(mod.(collect(1:100*x), 256)) for x in 1:num_packets]
 
         # Each packet will have a monotonically increasing granulepos, except for
         # the first two packets which are our "header" packets with granulepos == 0
-        granulepos[serial] = Int64[0, 0, [20*x for x in 1:(num_packets - 2)]...]
+        granulepos[serial] = Int64[0, 0, [length(packets[serial])*x + 1 for x in 0:(num_packets - 3)]...]
     end
 
     # Now we write these packets out to an IOBuffer

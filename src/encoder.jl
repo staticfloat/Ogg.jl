@@ -6,11 +6,13 @@ mutable struct OggEncoder
         enc = new(Dict{Clong,OggStreamState}(), Dict{Clong,Vector{Vector{UInt8}}}())
 
         # This seems to be causing problems.  :(
-        # finalizer(enc, x -> begin
-        #     for serial in keys(x.streams)
-        #         ogg_stream_destroy(x.streams[serial])
-        #     end
-        # end )
+        #=
+        finalizer(enc) do enc
+            for serial in keys(enc.streams)
+                ogg_stream_destroy(enc.streams[serial])
+            end
+        end
+        =#
 
         return enc
     end
@@ -103,7 +105,8 @@ function encode_all_packets(enc::OggEncoder, packets::Dict{Clong,Vector{Vector{U
             # fit within a single page too, so we don't bother with the typical
             # while loop that would dump out excess data into its own page.
             if granulepos[serial][packet_idx] == 0
-                push!(pages, read(ogg_stream_flush(enc, serial)))
+                page = ogg_stream_flush(enc, serial)
+                push!(pages, read(page))
             end
         end
 
