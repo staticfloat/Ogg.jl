@@ -65,13 +65,23 @@ function ogg_sync_pageout(dec::OggDecoder)
 end
 
 function ogg_page_serialno(page::OggPage)
-    pageref = Ref{OggPage}(page)
-    return Clong(ccall((:ogg_page_serialno,libogg), Cint, (Ref{OggPage},), pageref))
+    if page.header != C_NULL
+        pageref = Ref{OggPage}(page)
+        return Clong(ccall((:ogg_page_serialno,libogg), Cint, (Ref{OggPage},), pageref))
+    else
+        # Default to saying that a null page has serial number 0
+        return Clong(0)
+    end
 end
 
 function ogg_page_eos(page::OggPage)
-    pageref = Ref{OggPage}(page)
-    return ccall((:ogg_page_eos,libogg), Cint, (Ref{OggPage},), pageref)
+    if page.header != C_NULL
+        pageref = Ref{OggPage}(page)
+        return ccall((:ogg_page_eos,libogg), Cint, (Ref{OggPage},), pageref)
+    else
+        # Default to saying that a null page is the end of the bitstream
+        return Cint(1)
+    end
 end
 
 
