@@ -22,7 +22,7 @@ struct OggSyncState
 end
 
 function ogg_sync_destroy(sync::OggSyncState)
-    ccall((:ogg_sync_destroy,libogg), Cint, (Ptr{OggSyncState},),sync)
+    ccall((:ogg_sync_destroy,libogg), Cint, (Ref{OggSyncState},),sync)
 end
 
 
@@ -41,11 +41,9 @@ struct OggPage
 end
 
 function read(page::OggPage)
-    GC.@preserve page begin
-        header_ptr = unsafe_wrap(Array, page.header, page.header_len)
-        body_ptr = unsafe_wrap(Array, page.body, page.body_len)
-        return vcat(header_ptr, body_ptr)
-    end
+    header_ptr = unsafe_wrap(Vector{UInt8}, page.header, page.header_len; own=false)
+    body_ptr = unsafe_wrap(Vector{UInt8}, page.body, page.body_len; own=false)
+    return vcat(header_ptr, body_ptr)
 end
 
 function show(io::IO, x::OggPage)
@@ -101,7 +99,7 @@ mutable struct OggStreamState
 end
 
 function ogg_stream_destroy(stream::OggStreamState)
-    ccall((:ogg_stream_destroy,libogg), Cint, (Ptr{OggStreamState},),stream)
+    ccall((:ogg_stream_destroy,libogg), Cint, (Ref{OggStreamState},), stream)
 end
 
 struct OggPacket

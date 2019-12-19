@@ -13,12 +13,14 @@ mutable struct OggDecoder
         end
 
         # This seems to be causing problems.  :(
-        # finalizer(dec, x -> begin
-        #     for serial in keys(x.streams)
-        #         ogg_stream_destroy(x.streams[serial])
-        #     end
-        #     ogg_sync_destroy(x.sync_state)
-        # end )
+        #=
+        finalizer(dec) do dec
+            for serial in keys(dec.streams)
+                ogg_stream_destroy(dec.streams[serial])
+            end
+            ogg_sync_destroy(dec.sync_state)
+        end
+        =#
 
         return dec
     end

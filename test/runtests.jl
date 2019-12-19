@@ -1,5 +1,4 @@
-using Ogg
-using Compat.Test
+using Ogg, Test
 
 @testset "Ogg synthesis/analysis" begin
     # Let's start with building our own Ogg structure, writing it out to an IOBuf,
@@ -16,7 +15,7 @@ using Compat.Test
 
         # Each packet will have a monotonically increasing granulepos, except for
         # the first two packets which are our "header" packets with granulepos == 0
-        granulepos[serial] = Int64[0, 0, [20*x for x in 1:(num_packets - 2)]...]
+        granulepos[serial] = Int64[0, 0, [length(packets[serial])*x + 1 for x in 0:(num_packets - 3)]...]
     end
 
     # Now we write these packets out to an IOBuffer
