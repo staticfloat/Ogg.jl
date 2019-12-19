@@ -8,7 +8,7 @@ using Ogg, Test
     num_packets = 10
     stream_ids = Cint[1, 2, 3]
     packets = Dict{Clong,Vector{Vector{UInt8}}}()
-    granulepos = Dict{Int64,Vector{Int64}}()
+    granulepos = Dict{Clong,Vector{Int64}}()
     for serial in stream_ids
         # The packets are all of different size
         packets[serial] = Vector{UInt8}[UInt8.(mod.(collect(1:100*x), 256)) for x in 1:num_packets]
